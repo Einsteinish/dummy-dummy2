@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>com.tripactions</groupId>
+    <artifactId>ta-docker-mod</artifactId>
+    <version>5.85-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>tripactions-logstash-prisma</artifactId>
+  <packaging>pom</packaging>
+
+  <properties>
+    <base.docker.image>docker.elastic.co/logstash/logstash</base.docker.image>
+    <base.docker.version>7.13.2</base.docker.version>
+  </properties>
+
+  <profiles>
+    <profile>
+      <id>docker.build</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <property>
+          <name>docker.build</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>io.fabric8</groupId>
+            <artifactId>docker-maven-plugin</artifactId>
+            <configuration>
+              <logDate>default</logDate>
+              <autoPull>on</autoPull><!-- Valid values are on|off|always -->
+              <verbose>true</verbose><!-- If you want to see docker output, switch it on true -->
+              <images>
+                <image>
+                  <alias>${project.artifactId}</alias>
+                  <name>${internal.docker.repository.tag}/${project.artifactId}</name>
+                  <build>
+                    <from>${base.docker.image}:${base.docker.version}</from>
+                    <tags>
+                      <tag>${project.version}</tag>
+                    </tags>
+                    <optimise>true</optimise>
+                    <assembly>
+                      <basedir>/tmp/docker</basedir>
+                      <exportBasedir>false</exportBasedir>
+                      <descriptor>assembly.xml</descriptor>
+                      <user>logstash:root:root</user>
+                    </assembly>
+                    <runCmds>
+                      <run>echo "xpack.monitoring.enabled: false" >> /usr/share/logstash/config/logstash.yml</run>
+                      <run>cp /tmp/docker/src/main/docker/pipeline/ta.conf /usr/share/logstash/pipeline/logstash.conf</run>
+                      <run>ls -ls /usr/share/logstash/*</run>
+                      <run>cat /usr/share/logstash/pipeline/logstash.conf</run>
+                      <run>cp /tmp/docker/src/main/docker/scripts/geodb_updater.sh /geodb_updater.sh</run>
+                      <run>/usr/share/logstash/bin/logstash-plugin install logstash-output-coralogix</run>
+                      <run>/usr/share/logstash/bin/logstash-plugin list</run>
+                    </runCmds>
+                    <ports>
+                      <port>9000</port>
+                      <port>9600</port>
+                    </ports>
+                    <!--
+                    <env>
+                      <ES_ENDPOINT>es1</ES_ENDPOINT>
+                        <ES_ENDPOINT_2>https://vpc-ta-pci-elasticsearch-x5aa3vwdpwtaeutjrnzr2adhdu.us-west-2.es.amazonaws.com:443</ES_ENDPOINT_2>
+                      <TOKEN>blah</TOKEN>
+                    </env>
+                  -->
+                  </build>
+                </image>
+              </images>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
